@@ -16,10 +16,7 @@ This project implements an AI coding agent using Google's Gemini API with functi
 
 - **`prompts.py`**: System prompt that instructs the LLM on available operations
 
-### Main Scripts
-
-- **`main.py`**: Basic version that prints function calls without executing them
-  - Good for testing and understanding how the LLM plans function calls
+### Main Script
   
 - **`main.py`**: Full agentic version that executes functions and continues conversation
   - Implements the agentic loop
@@ -64,16 +61,6 @@ The full version (`main_agentic.py`) implements an agentic loop:
    - Exit loop
 
 ## Usage
-
-### Simple Version (just print function calls)
-
-```bash
-python main_simple.py "what files are in the root?"
-# Output: Calling function: get_files_info({'directory': '.'})
-
-python main_simple.py "what files are in the pkg directory?"
-# Output: Calling function: get_files_info({'directory': 'pkg'})
-```
 
 ### Agentic Version (execute functions)
 
