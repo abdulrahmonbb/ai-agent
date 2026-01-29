@@ -9,6 +9,7 @@ This project implements an AI coding agent using Google's Gemini API with functi
 - **`call_function.py`**: Contains function schemas and the dispatcher
   - `schema_get_files_info`: Schema for listing directory contents
   - `schema_get_file_content`: Schema for reading file contents
+  - `schema_write_file`: Schema for writing content to a file
   - `schema_run_python_file`: Schema for executing Python files
   - `available_functions`: Tool object with all function declarations
   - `call_function()`: Dispatcher that executes functions with injected working_directory
@@ -30,6 +31,7 @@ This project implements an AI coding agent using Google's Gemini API with functi
 
 - **`functions/get_files_info.py`**: Lists files in a directory
 - **`functions/get_file_content.py`**: Reads file contents
+- **`functions/write_file`**: Writes content to files
 - **`functions/run_python_file.py`**: Executes Python scripts with optional arguments
 
 ## Key Design Decisions
@@ -76,17 +78,17 @@ python main_simple.py "what files are in the pkg directory?"
 ### Agentic Version (execute functions)
 
 ```bash
-python main_agentic.py "what files are in the root?"
+python main.py "what files are in the root?"
 # Executes get_files_info and returns the actual file list
 
-python main_agentic.py "read the main.py file"
+python main.py "read the main.py file"
 # Executes get_file_content and returns the file contents
 
-python main_agentic.py "run the tests.py file"
+python main.py "run the tests.py file"
 # Executes run_python_file and returns the output
 
 # Specify a different working directory
-python main_agentic.py "list the files" --working-dir /path/to/dir
+python main.py "list the files" --working-dir /path/to/dir
 ```
 
 ### Verbose Mode
@@ -94,7 +96,7 @@ python main_agentic.py "list the files" --working-dir /path/to/dir
 Add `--verbose` to see token counts and function execution details:
 
 ```bash
-python main_agentic.py "list files and read main.py" --verbose
+python main.py "list files and read main.py" --verbose
 ```
 
 ## Example Queries
