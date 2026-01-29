@@ -1,6 +1,7 @@
 from google.genai import types
 from functions.get_file_content import get_file_content
 from functions.get_files_info import get_files_info
+from functions.write_file import write_file
 from functions.run_python_file import run_python_file
 
 # Function schemas for Gemini API
@@ -8,13 +9,13 @@ from functions.run_python_file import run_python_file
 
 schema_get_files_info = types.FunctionDeclaration(
     name="get_files_info",
-    description="Lists files in a specified directory relative to the working directory, providing file size and directory status",
+    description="Lists files in a specified directory relative to the working directory, providing file size and directory status. If no directory is specified, lists the working directory itself.",
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
             "directory": types.Schema(
                 type=types.Type.STRING,
-                description="Directory path to list files from, relative to the working directory (default is the working directory itself)",
+                description="Directory path to list files from, relative to the working directory. Defaults to '.' (the working directory itself) if not specified.",
             ),
         },
     ),
@@ -33,6 +34,25 @@ schema_get_file_content = types.FunctionDeclaration(
         },
         required=["file_path"],
     ),
+)
+
+schema_write_file = types.FunctionDeclaration(
+    name="write_file",
+    description="Writes content to a specified file relative to the working directory",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="file to be written to",
+            ),
+            "content": types.Schema(
+                type=types.Type.STRING,
+                description="content to be written to file"
+            ),
+        },
+        required=["file_path", "content"],
+    )
 )
 
 schema_run_python_file = types.FunctionDeclaration(
@@ -60,43 +80,73 @@ available_functions = types.Tool(
     function_declarations=[
         schema_get_files_info,
         schema_get_file_content,
+        schema_write_file,
         schema_run_python_file,
     ],
 )
 
+# Map of function names to actual functions
+function_map = {
+    "get_files_info": get_files_info,
+    "get_file_content": get_file_content,
+    "write_file": write_file,
+    "run_python_file": run_python_file,
+}
 
-def call_function(function_name, args, working_directory="calculator"):
+
+def call_function(function_call, verbose=False):
     """
-    Execute a function by name with the provided arguments.
+    Execute a function call and return the result.
     The working_directory is injected here for security - the LLM doesn't control it.
     
     Args:
-        function_name: Name of the function to call
-        args: Dictionary of arguments from the LLM
-        working_directory: The permitted working directory (injected, not from LLM)
+        function_call: A types.FunctionCall object with name and args properties
+        verbose: If True, print detailed function call information
     
     Returns:
-        The result of the function call as a string
+        A types.Content object with the function result
     """
-    if function_name == "get_file_content":
-        return get_file_content(
-            working_directory=working_directory,
-            file_path=args.get("file_path")
-        )
+    # Get function name (ensure it's a string)
+    function_name = function_call.name or ""
     
-    elif function_name == "get_files_info":
-        # The LLM calls it "directory" but our function expects "path"
-        return get_files_info(
-            working_directory=working_directory,
-            path=args.get("directory", ".")
-        )
-    
-    elif function_name == "run_python_file":
-        return run_python_file(
-            working_directory=working_directory,
-            file_path=args.get("file_path"),
-            args=args.get("args")
-        )
-    
+    # Print function call info
+    if verbose:
+        print(f"Calling function: {function_name}({function_call.args})")
     else:
-        return f"Error: Unknown function '{function_name}'"
+        print(f" - Calling function: {function_name}")
+    
+    # Check if function exists
+    if function_name not in function_map:
+        return types.Content(
+            role="tool",
+            parts=[
+                types.Part.from_function_response(
+                    name=function_name,
+                    response={"error": f"Unknown function: {function_name}"},
+                )
+            ],
+        )
+    
+    # Make a shallow copy of args and inject working_directory
+    args = dict(function_call.args) if function_call.args else {}
+    args["working_directory"] = "./calculator"
+    
+    # Handle parameter name mapping for get_files_info
+    if function_name == "get_files_info":
+        # Ensure directory parameter exists, default to "." if not provided
+        if "directory" not in args:
+            args["directory"] = "."
+    
+    # Call the function with unpacked arguments
+    function_result = function_map[function_name](**args)
+    
+    # Return the result as a types.Content object
+    return types.Content(
+        role="tool",
+        parts=[
+            types.Part.from_function_response(
+                name=function_name,
+                response={"result": function_result},
+            )
+        ],
+    )
